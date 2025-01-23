@@ -1,6 +1,32 @@
 import numpy as np
 import cv2
 import imutils
+from threading import Thread
+
+class VideoStream:
+    def __init__(self, src=0):
+        self.stream = cv2.VideoCapture(src)
+        if not self.stream.isOpened():
+            raise IOError("Konnte die Kamera nicht starten..")
+        self.ret, self.frame = self.stream.read()
+        self.stopped = False
+
+    def start(self):
+        Thread(target=self.update, args=()).start()
+        return self
+
+    def update(self):
+        while True:
+            if self.stopped:
+                return
+            self.ret, self.frame = self.stream.read()
+
+    def read(self):
+        return self.ret, self.frame
+
+    def stop(self):
+        self.stopped = True
+        self.stream.release()
 
 # Laden der Cascade-Datei
 gun_cascade = cv2.CascadeClassifier('cascade.xml')
@@ -8,9 +34,7 @@ if gun_cascade.empty():
     raise IOError("Konnte die Cascade-Datei nicht laden..")
 
 # Zugriff auf die Kamera
-camera = cv2.VideoCapture(0)
-if not camera.isOpened():
-    raise IOError("Konnte die Kamera nicht starten..")
+camera = VideoStream().start()
 
 firstFrame = None
 gun_exist = False
@@ -47,5 +71,5 @@ try:
         print("No Gun Detected")
 
 finally:
-    camera.release()
+    camera.stop()
     cv2.destroyAllWindows()
