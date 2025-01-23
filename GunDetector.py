@@ -1,46 +1,51 @@
-from calendar import c
 import numpy as np
 import cv2
 import imutils
-import datetime
 
+# Laden der Cascade-Datei
 gun_cascade = cv2.CascadeClassifier('cascade.xml')
+if gun_cascade.empty():
+    raise IOError("Konnte die Cascade-Datei nicht laden..")
+
+# Zugriff auf die Kamera
 camera = cv2.VideoCapture(0)
+if not camera.isOpened():
+    raise IOError("Konnte die Kamera nicht starten..")
 
 firstFrame = None
-gun_exist = None
+gun_exist = False
 
-while True:
-    ret, frame = camera.read()
-    frame = imutils.resize(frame, width=500)
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gun = gun_cascade.detectMultiScale(gray, 1.3, 5, minSize=(100, 100))
+try:
+    while True:
+        ret, frame = camera.read()
+        if not ret:
+            break
 
-    if len(gun) > 0:
-        gun_exist = True
+        frame = imutils.resize(frame, width=500)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gun = gun_cascade.detectMultiScale(gray, 1.3, 5, minSize=(100, 100))
 
-    for (x, y, w, h) in gun:
+        if len(gun) > 0:
+            gun_exist = True
+
+        for (x, y, w, h) in gun:
             frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
 
-            roi_gray = gray[y:y+h, x:x+w]
-            roi_color = frame[y:y+h, x:x+w]
+        if firstFrame is None:
+            firstFrame = gray
+            continue
 
-    if firstFrame is None:
-        firstFrame = gray
-        continue
+        cv2.imshow("Security Feed", frame)
+        key = cv2.waitKey(1) & 0xFF
 
-    cv2.imshow("Security Feed", frame)
-    key = cv2.waitKey(1) & 0xFF
+        if key == ord("q"):
+            break
 
-    if key == ord("q"):
-        break
+    if gun_exist:
+        print("Gun Detected")
+    else:
+        print("No Gun Detected")
 
-if gun_exist:
-    print("Gun Detected")
-
-else:
-    print("No Gun Detected")
-
-camera.realease()
-cv2.destroyAllWindows()
-
+finally:
+    camera.release()
+    cv2.destroyAllWindows()
